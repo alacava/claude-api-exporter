@@ -59,6 +59,8 @@ up on your own fork:
 | `anthropic_usage_tokens` | api_key_id, api_key_name, model, token_type, inference_geo, date | Tokens per day bucket (`token_type`: input/output/cache_write/cache_read) |
 | `anthropic_estimated_cost_usd` | api_key_id, api_key_name, model, inference_geo, date | Estimated USD from token counts × pricing |
 | `anthropic_billed_cost_usd` | workspace_id, description, date | Billed USD from the Cost API (reconciliation) |
+| `anthropic_monthly_estimated_cost_usd` | api_key_id, api_key_name | Estimated USD cost for the **current calendar month**, per API key |
+| `anthropic_monthly_billed_cost_usd` | workspace_id | Billed USD cost for the **current calendar month**, per workspace |
 | `anthropic_exporter_up` | — | 1 if last poll succeeded |
 | `anthropic_exporter_last_success_timestamp_seconds` | — | Last successful poll time |
 | `anthropic_exporter_poll_errors_total` | — | Failed poll counter |
@@ -66,6 +68,24 @@ up on your own fork:
 Notes: Workbench usage has `api_key_id="none"`; default-workspace cost has
 `workspace_id="default"`. Data lands within ~5 min; the API allows ~1 poll/min,
 so the 300s default is comfortable.
+
+## Grafana dashboard
+
+A pre-built dashboard is included at [`grafana/dashboard.json`](grafana/dashboard.json).
+Import it via **Dashboards → Import → Upload JSON file** in the Grafana UI, then
+select your Prometheus data source when prompted.
+
+Panels included:
+
+| Section | Panels |
+| --- | --- |
+| Health | Exporter up/down, time since last poll, total estimated cost, total billed cost |
+| **Monthly Summary** | **Total estimated cost this month, total billed cost this month, per-key monthly cost, per-workspace monthly billed cost** |
+| Cost Breakdown | Estimated cost by API key, estimated cost by model (lookback window) |
+| Token Usage | Tokens by type, total tokens by key, cache hit ratio by key |
+| Reconciliation | Estimated vs billed (side-by-side), billed cost by description |
+| Detail | Filterable table: input/output/cache tokens + cost per key/model/date |
+| Exporter Health | Total poll errors |
 
 ## Prometheus scrape config
 

@@ -94,6 +94,16 @@ UP = Gauge("anthropic_exporter_up", "1 if the last poll cycle succeeded, else 0.
 ERRORS = Counter(
     "anthropic_exporter_poll_errors_total", "Total number of failed poll cycles."
 )
+MONTHLY_EST_COST = Gauge(
+    "anthropic_monthly_estimated_cost_usd",
+    "Estimated USD cost for the current calendar month, by API key.",
+    ["api_key_id", "api_key_name"],
+)
+MONTHLY_BILLED_COST = Gauge(
+    "anthropic_monthly_billed_cost_usd",
+    "Billed USD cost for the current calendar month (workspace level).",
+    ["workspace_id"],
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -156,6 +166,15 @@ def window():
     end = (now + timedelta(days=1)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    return start.strftime(fmt), end.strftime(fmt)
+
+
+def monthly_window():
+    """Return (starting_at, ending_at) covering the 1st of the current month to now."""
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return start.strftime(fmt), end.strftime(fmt)
 
@@ -281,6 +300,54 @@ def poll_once(client: AdminClient, pricing: dict) -> None:
         # Cost endpoint may be unavailable (e.g. Claude Platform on AWS); don't
         # fail the whole cycle over reconciliation data.
         log.warning("Cost report fetch failed (continuing): %s", exc)
+
+    # ---- Monthly: current-month totals per API key and workspace ----
+    m_start, m_end = monthly_window()
+    monthly_usage = client.get_paginated(
+        "/v1/organizations/usage_report/messages",
+        [
+            ("starting_at", m_start),
+            ("ending_at", m_end),
+            ("bucket_width", "1d"),
+            ("group_by[]", "api_key_id"),
+            ("group_by[]", "model"),
+            ("group_by[]", "inference_geo"),
+            ("limit", "31"),
+        ],
+    )
+    monthly_costs: dict[str, float] = {}
+    for bucket in monthly_usage:
+        for res in bucket.get("results", []):
+            key_id = res.get("api_key_id") or "none"
+            model  = res.get("model") or "unknown"
+            geo    = res.get("inference_geo") or "not_available"
+            monthly_costs[key_id] = (
+                monthly_costs.get(key_id, 0.0)
+                + estimate_cost(model, extract_tokens(res), geo, pricing)
+            )
+    MONTHLY_EST_COST.clear()
+    for key_id, total in monthly_costs.items():
+        MONTHLY_EST_COST.labels(key_id, key_names.get(key_id, key_id)).set(total)
+
+    try:
+        monthly_billed: dict[str, float] = {}
+        for bucket in client.get_paginated(
+            "/v1/organizations/cost_report",
+            [("starting_at", m_start), ("ending_at", m_end), ("group_by[]", "workspace_id")],
+        ):
+            for res in bucket.get("results", []):
+                ws  = res.get("workspace_id") or "default"
+                raw = res.get("amount", res.get("cost", 0))
+                try:
+                    usd = float(raw) / (100.0 if COST_IN_CENTS else 1.0)
+                except (TypeError, ValueError):
+                    usd = 0.0
+                monthly_billed[ws] = monthly_billed.get(ws, 0.0) + usd
+        MONTHLY_BILLED_COST.clear()
+        for ws, total in monthly_billed.items():
+            MONTHLY_BILLED_COST.labels(ws).set(total)
+    except requests.RequestException as exc:
+        log.warning("Monthly cost report fetch failed (continuing): %s", exc)
 
     LAST_POLL.set(time.time())
     log.info("Poll OK: %d usage bucket(s) across %d key(s).",

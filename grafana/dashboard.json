@@ -1,0 +1,481 @@
+{
+  "annotations": { "list": [] },
+  "description": "Anthropic Claude API usage, token counts, and cost metrics.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "title": "Health", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [{ "options": { "0": { "color": "red", "index": 0, "text": "DOWN" }, "1": { "color": "green", "index": 1, "text": "UP" } }, "type": "value" }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "anthropic_exporter_up", "legendFormat": "", "refId": "A" }],
+      "title": "Exporter Status",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 900 }, { "color": "red", "value": 1800 }] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "time() - anthropic_exporter_last_success_timestamp_seconds", "legendFormat": "", "refId": "A" }],
+      "title": "Time Since Last Poll",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 200 }] },
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_estimated_cost_usd)", "legendFormat": "Estimated", "refId": "A" }],
+      "title": "Total Estimated Cost (Lookback Window)",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 200 }] },
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_billed_cost_usd)", "legendFormat": "Billed", "refId": "A" }],
+      "title": "Total Billed Cost (Lookback Window)",
+      "type": "stat"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "id": 110, "title": "Monthly Summary", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 100 }, { "color": "red", "value": 500 }] },
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 6 },
+      "id": 20,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_monthly_estimated_cost_usd)", "legendFormat": "Estimated", "refId": "A" }],
+      "title": "Total Estimated Cost — This Month",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 100 }, { "color": "red", "value": 500 }] },
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 6 },
+      "id": 21,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_monthly_billed_cost_usd)", "legendFormat": "Billed", "refId": "A" }],
+      "title": "Total Billed Cost — This Month",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 2, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 22,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (api_key_name) (anthropic_monthly_estimated_cost_usd))",
+        "legendFormat": "{{api_key_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Estimated Cost by API Key — This Month",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 2, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 23,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(anthropic_monthly_billed_cost_usd)",
+        "legendFormat": "{{workspace_id}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Billed Cost by Workspace — This Month",
+      "type": "bargauge"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }, "id": 101, "title": "Cost Breakdown (Lookback Window)", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 5,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (api_key_name) (anthropic_estimated_cost_usd))",
+        "legendFormat": "{{api_key_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Estimated Cost by API Key",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 6,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (model) (anthropic_estimated_cost_usd))",
+        "legendFormat": "{{model}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Estimated Cost by Model",
+      "type": "bargauge"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }, "id": 102, "title": "Token Usage", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short", "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
+      "id": 7,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (token_type) (anthropic_usage_tokens))",
+        "legendFormat": "{{token_type}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Tokens by Type",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short", "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
+      "id": 8,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (api_key_name) (anthropic_usage_tokens))",
+        "legendFormat": "{{api_key_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Total Tokens by API Key",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.1 }, { "color": "green", "value": 0.3 }] },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "id": 9,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sum by (api_key_name) (anthropic_usage_tokens{token_type=\"cache_read\"}) / sum by (api_key_name) (anthropic_usage_tokens{token_type=~\"input|cache_read\"})",
+        "legendFormat": "{{api_key_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Cache Hit Ratio by API Key",
+      "type": "bargauge"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 }, "id": 103, "title": "Reconciliation", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 37 },
+      "id": 10,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_estimated_cost_usd)", "legendFormat": "Estimated (token-based)", "refId": "A", "instant": true },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(anthropic_billed_cost_usd)",   "legendFormat": "Billed (invoice)",      "refId": "B", "instant": true }
+      ],
+      "title": "Estimated vs Billed Cost (Lookback Window)",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4, "min": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 37 },
+      "id": 11,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "expr": "sort_desc(sum by (description) (anthropic_billed_cost_usd))",
+        "legendFormat": "{{description}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "title": "Billed Cost by Description",
+      "type": "bargauge"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 }, "id": 104, "title": "Detail", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true, "inspect": false }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Value #A" }, "properties": [{ "id": "displayName", "value": "Input Tokens" },       { "id": "unit", "value": "short" }] },
+          { "matcher": { "id": "byName", "options": "Value #B" }, "properties": [{ "id": "displayName", "value": "Output Tokens" },      { "id": "unit", "value": "short" }] },
+          { "matcher": { "id": "byName", "options": "Value #C" }, "properties": [{ "id": "displayName", "value": "Cache Write Tokens" }, { "id": "unit", "value": "short" }] },
+          { "matcher": { "id": "byName", "options": "Value #D" }, "properties": [{ "id": "displayName", "value": "Cache Read Tokens" },  { "id": "unit", "value": "short" }] },
+          { "matcher": { "id": "byName", "options": "Value #E" }, "properties": [{ "id": "displayName", "value": "Est. Cost (USD)" }, { "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 6 }, { "id": "custom.cellOptions", "value": { "type": "color-background" } }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 25 }] } }] },
+          { "matcher": { "id": "byName", "options": "api_key_name"  }, "properties": [{ "id": "displayName", "value": "API Key" }] },
+          { "matcher": { "id": "byName", "options": "model"         }, "properties": [{ "id": "displayName", "value": "Model"   }] },
+          { "matcher": { "id": "byName", "options": "inference_geo" }, "properties": [{ "id": "displayName", "value": "Geo"     }] },
+          { "matcher": { "id": "byName", "options": "date"          }, "properties": [{ "id": "displayName", "value": "Date"    }, { "id": "custom.width", "value": 110 }] }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 44 },
+      "id": 12,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Est. Cost (USD)" }] },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (api_key_name, model, inference_geo, date) (anthropic_usage_tokens{token_type=\"input\"})",       "legendFormat": "", "refId": "A", "instant": true, "format": "table" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (api_key_name, model, inference_geo, date) (anthropic_usage_tokens{token_type=\"output\"})",      "legendFormat": "", "refId": "B", "instant": true, "format": "table" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (api_key_name, model, inference_geo, date) (anthropic_usage_tokens{token_type=\"cache_write\"})", "legendFormat": "", "refId": "C", "instant": true, "format": "table" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (api_key_name, model, inference_geo, date) (anthropic_usage_tokens{token_type=\"cache_read\"})",  "legendFormat": "", "refId": "D", "instant": true, "format": "table" },
+        { "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (api_key_name, model, inference_geo, date) (anthropic_estimated_cost_usd)",                       "legendFormat": "", "refId": "E", "instant": true, "format": "table" }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true } } }
+      ],
+      "title": "Usage & Cost Detail (per Key / Model / Date)",
+      "type": "table"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 }, "id": 105, "title": "Exporter Health", "type": "row" },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 57 },
+      "id": 13,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "anthropic_exporter_poll_errors_total", "legendFormat": "", "refId": "A" }],
+      "title": "Total Poll Errors",
+      "type": "stat"
+    }
+
+  ],
+
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["anthropic", "llm", "cost"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Data Source"
+      }
+    ]
+  },
+  "time": { "from": "now-48h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Anthropic API Usage & Cost",
+  "uid": "anthropic-exporter-v1",
+  "version": 2
+}
