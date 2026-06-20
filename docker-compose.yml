@@ -1,0 +1,21 @@
+services:
+  anthropic-exporter:
+    image: antlac1/claude-api-exporter:latest
+    # To build locally instead:  build: .
+    container_name: anthropic-exporter
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "9402:9402"
+    volumes:
+    # Mount pricing read-only so you can tweak rates without rebuilding.
+    #  - ./pricing.json:/app/pricing.json:ro
+    # If your Prometheus runs in Docker, attach this to its network instead of
+    # publishing the port, then scrape http://anthropic-exporter:9402/metrics
+    # networks:
+    #   - monitoring
+
+# networks:
+#   monitoring:
+#     external: true
