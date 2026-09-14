@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Fetch current Anthropic model pricing from the docs page and update pricing.json.
-Intended to run at container build time. Falls back gracefully on any error so
-the build never breaks due to a transient network issue.
+Run at container build time and daily via GitHub Actions. Falls back gracefully
+on any error so a build/run never breaks due to a transient network issue or a
+docs page redesign.
 """
 
 import json
@@ -14,14 +15,36 @@ import urllib.request
 
 PRICING_URL = os.environ.get(
     "ANTHROPIC_PRICING_URL",
-    "https://platform.claude.com/docs/en/pricing.md",
+    "https://platform.claude.com/docs/en/about-claude/pricing.md",
 )
 PRICING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pricing.json")
 TIMEOUT = 20
 
-# Standard Anthropic cache-pricing multipliers (applied to input $/1M)
-CACHE_WRITE_MULT = 1.25   # 5-min TTL write
-CACHE_READ_MULT = 0.10    # cache read hit
+# The "## Model pricing" table lists models by display name, not API model ID,
+# so a name -> ID mapping has to be maintained by hand. Verified against
+# https://platform.claude.com/docs/en/about-claude/models/overview and each
+# model's own /docs/en/models/<slug>/overview page. Pre-4.6-generation models
+# get both their dateless alias and dated snapshot ID, since usage/cost
+# reports may reference either depending on which one a caller used.
+NAME_TO_MODEL_IDS = {
+    "Claude Fable 5.1": ["claude-fable-5-1"],
+    "Claude Mythos 5.1": ["claude-mythos-5-1"],
+    "Claude Fable 5": ["claude-fable-5"],
+    "Claude Mythos 5": ["claude-mythos-5"],
+    "Claude Opus 5": ["claude-opus-5"],
+    "Claude Opus 4.8": ["claude-opus-4-8"],
+    "Claude Opus 4.7": ["claude-opus-4-7"],
+    "Claude Opus 4.6": ["claude-opus-4-6"],
+    "Claude Opus 4.5": ["claude-opus-4-5", "claude-opus-4-5-20251101"],
+    "Claude Opus 4.1": ["claude-opus-4-1", "claude-opus-4-1-20250805"],
+    "Claude Opus 4": ["claude-opus-4-0", "claude-opus-4-20250514"],
+    "Claude Sonnet 5": ["claude-sonnet-5"],
+    "Claude Sonnet 4.6": ["claude-sonnet-4-6"],
+    "Claude Sonnet 4.5": ["claude-sonnet-4-5", "claude-sonnet-4-5-20250929"],
+    "Claude Sonnet 4": ["claude-sonnet-4-0", "claude-sonnet-4-20250514"],
+    "Claude Haiku 4.5": ["claude-haiku-4-5", "claude-haiku-4-5-20251001"],
+    "Claude Haiku 3.5": ["claude-3-5-haiku-20241022"],
+}
 
 
 def fetch_page(url: str) -> str:
@@ -35,36 +58,60 @@ def fetch_page(url: str) -> str:
 
 def parse_models(text: str) -> dict:
     """
-    Scan markdown for table rows that contain a backtick-quoted ``claude-*`` model ID
-    and at least two ``$N.NN`` dollar amounts (input, output).
+    Parse the "## Model pricing" table:
 
-    Expected column layout (indices are flexible):
-      Model Name | Model ID | Context | Input $/1M | Output $/1M
+      | Model | Base input tokens | 5m cache writes | 1h cache writes | Cache hits and refreshes | Output tokens |
+
+    Returns {model_id: {input, output, cache_write, cache_read}}, where
+    cache_write is the 5-minute-TTL write price and cache_read is the actual
+    cache-hit price from the table (not a derived multiplier, since it varies
+    by model, e.g. 0.025x on Fable/Mythos 5.1 vs the standard 0.1x).
     """
+    section_match = re.search(r"## Model pricing\n(.*?)\n## ", text, re.S)
+    if not section_match:
+        return {}
+    section = section_match.group(1)
+
     models = {}
-    for line in text.splitlines():
-        m_id = re.search(r'`(claude-[a-z0-9.\-]+)`', line)
-        if not m_id:
+    for line in section.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
             continue
-        model_id = m_id.group(1)
-
-        prices = re.findall(r'\$(\d+(?:\.\d+)?)', line)
-        if len(prices) < 2:
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 6:
             continue
-
-        try:
-            # Last two dollar amounts in the row are input / output
-            input_price = float(prices[-2])
-            output_price = float(prices[-1])
-        except (ValueError, IndexError):
+        if cells[0].lower() == "model" or set(cells[0]) <= set("- "):
             continue
 
-        models[model_id] = {
-            "input": input_price,
-            "output": output_price,
-            "cache_write": round(input_price * CACHE_WRITE_MULT, 6),
-            "cache_read": round(input_price * CACHE_READ_MULT, 6),
-        }
+        name = re.sub(r"\s*\(.*$", "", cells[0]).strip()
+
+        prices = []
+        for cell in cells[1:6]:
+            m = re.search(r"\$([\d.]+)", cell)
+            if not m:
+                prices = None
+                break
+            prices.append(float(m.group(1)))
+        if prices is None:
+            continue
+        input_price, cache_write, _cache_write_1h, cache_read, output_price = prices
+
+        model_ids = NAME_TO_MODEL_IDS.get(name)
+        if not model_ids:
+            print(
+                f"fetch_pricing: WARNING - unmapped model {name!r} in pricing table; "
+                "add it to NAME_TO_MODEL_IDS in fetch_pricing.py",
+                file=sys.stderr,
+            )
+            continue
+
+        for model_id in model_ids:
+            models[model_id] = {
+                "input": input_price,
+                "output": output_price,
+                "cache_write": cache_write,
+                "cache_read": cache_read,
+            }
 
     return models
 
@@ -83,14 +130,14 @@ def main() -> None:
     try:
         text = fetch_page(PRICING_URL)
     except (urllib.error.URLError, OSError, Exception) as exc:
-        print(f"fetch_pricing: WARNING – could not fetch pricing page: {exc}", file=sys.stderr)
+        print(f"fetch_pricing: WARNING - could not fetch pricing page: {exc}", file=sys.stderr)
         print("fetch_pricing: keeping existing pricing.json unchanged.", file=sys.stderr)
         return
 
     models = parse_models(text)
     if not models:
         print(
-            "fetch_pricing: WARNING – no model prices parsed from page; "
+            "fetch_pricing: WARNING - no model prices parsed from page; "
             "keeping existing pricing.json unchanged.",
             file=sys.stderr,
         )
@@ -101,18 +148,19 @@ def main() -> None:
     merged.update(models)   # docs-fetched values win; hand-edited keys not in docs are kept
     existing["models"] = merged
     existing["_comment"] = (
-        f"USD per MILLION tokens. Auto-fetched from {PRICING_URL} at build time. "
-        "cache_write = 1.25x input (5-min TTL); cache_read = 0.1x input. "
-        "us_multiplier applies when inference_geo == 'us' on newer models."
+        f"USD per MILLION tokens. Auto-fetched from {PRICING_URL}. "
+        "cache_write = 5-min TTL write price; cache_read = cache-hit price, both taken "
+        "directly from the docs table. us_multiplier applies when inference_geo == 'us' "
+        "on newer models."
     )
 
     with open(PRICING_FILE, "w", encoding="utf-8") as fh:
-        json.dump(existing, fh, indent=2)
+        json.dump(existing, fh, indent=2, sort_keys=True)
         fh.write("\n")
 
     print(
-        f"fetch_pricing: updated pricing.json – "
-        f"{len(models)} model(s) from docs: {', '.join(sorted(models))}"
+        f"fetch_pricing: updated pricing.json - "
+        f"{len(models)} model ID(s) from docs: {', '.join(sorted(models))}"
     )
 
 
