@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 PRICING_URL = os.environ.get(
@@ -48,6 +49,9 @@ NAME_TO_MODEL_IDS = {
 
 
 def fetch_page(url: str) -> str:
+    # Only allow http(s); urllib would otherwise honour file:// and other schemes.
+    if urllib.parse.urlsplit(url).scheme.lower() not in ("http", "https"):
+        raise ValueError(f"Refusing to fetch non-HTTP(S) URL: {url!r}")
     req = urllib.request.Request(
         url,
         headers={"User-Agent": "anthropic-prom-exporter/fetch-pricing (build-time)"},
