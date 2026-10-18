@@ -1,1 +1,3 @@
 dockerhub-description.md
+__pycache__/
+*.pyc
